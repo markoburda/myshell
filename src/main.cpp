@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     else{
         std::cerr << "Wrong path\n";
     }
-    res = right_path(paths, "shit");
+    res = right_path(paths, "wrong");
     std::cin >> a;
     if(!res.empty()){
         std::cout << res << '\n';
