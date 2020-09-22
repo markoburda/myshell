@@ -1,38 +1,38 @@
-# Lab 2 Option 3: Adder
+Інтерпретатор повинен виводити командний рядок із інформацією про поточний шлях:
 
-## Team
+/usr/bin $
 
- - [Volodymyr Chernetskyi](https://github.com/chernetskyi)
+Слід підтримувати змінну середовища PATH, яка визначає директорії для пошуку виконавчих програм.
 
-## Prerequisites
+Підказка: див. наявні функції сімейства exec.
 
- - **C++ compiler** - needs to support **C++17** standard
- - **CMake** 3.15+
- 
-The rest prerequisites (such as development libraries) can be found in the [packages file](./apt_packages.txt) in the form of the apt package manager package names.
+Програмі слід передати її аргументи, вказані в командному рядку:
 
-## Installing
+/usr/bin $ prgname arg1 arg2 arg3=4
 
-1. Clone the project.
-    ```bash
-    git clone git@github.com:chernetskyi/cpp-template.git
-    ```
-2. Install required libraries. On Ubuntu:
-   ```bash
-   sed 's/\r$//' apt_packages.txt | sed 's/#.*//' | xargs sudo apt-get install -y
-   ```
-3. Build.
-    ```bash
-    cmake -G"Unix Makefiles" -Bbuild
-    cmake --build build
-    ```
+означатиме, що prgname отримає три аргументи, "arg1", "arg2", "arg3=4". Зауважте, її argc буде рівним 4, аргументом із номером 0, argv[0], буде її ім'я, "prgname", чи "<path_to>/prgname".
 
-## Usage
+Для тестування зручно використати просту програму, що виводить кількість своїх аргументів та їх вміст
+#include <iostream>
+int main(int argc, char *argv[] ){
+    cout << "Arguments: " << argc << endl;
+    for(int i=0; i<argc; ++i)
+        std::cout << "Argument " << i << ": " << argv[i] << std::endl;   
+    return 0;
+}
 
-```bash
-add [a] [b]
-```
+Увага! ==> Роздільником аргументів команд, по замовчуванню, служить пробіл (див. також додаткові завдання). Перше ''слово'' -- до пробілу, вважається іменем команди. Все решта -- її опціями.
 
-If less than two numbers provided, zeroes are used instead. If more - an error occurs.
+підтримка скриптів
+Увага! 1. Якщо інтерпретатору передати файл в командному рядку, він повинен його виконати, рядок за рядком (так, ніби команди введено з stdin):
 
-Help flags `-h`/`--help` support is available.
+$ myshell file.msh
+
+<вивід результатів виконання першого рядка file.msh >
+
+<вивід результатів виконання другого рядка file.msh >
+
+.....
+
+після чого -- завершитися.
+
