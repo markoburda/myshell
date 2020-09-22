@@ -2,7 +2,7 @@
 #define ADDER_OPERATIONS_HPP
 
 namespace operations {
-    int add(int, int);
+    int merrno();
 }
 
 #endif //ADDER_OPERATIONS_HPP

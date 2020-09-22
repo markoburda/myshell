@@ -1,39 +1,62 @@
 #include <iostream>
 #include <boost/program_options.hpp>
-
+#include <boost/tokenizer.hpp>
+#include <string>
 #include "operations/operations.hpp"
 
+
+std::vector<std::string> tokenize(const std::string& input)
+{
+    std::vector<std::string> result;
+    typedef boost::char_separator<char> separator;
+    std::string delim = " ";
+    boost::tokenizer<separator> tokens(input, separator(delim.c_str()));
+    std::copy(tokens.begin(), tokens.end(), std::back_inserter(result));
+    return result;
+}
+
+
+
 int main(int argc, char **argv) {
-    int variable_a, variable_b;
+
+    std::string program;
+    std::vector<std::string> args;
 
     namespace po = boost::program_options;
-
-    po::options_description visible("Supported options");
+    po::options_description visible("Options");
     visible.add_options()
-            ("help,h", "Print this help message.");
+       ("help,h", "Print this help message.");
 
     po::options_description hidden("Hidden options");
     hidden.add_options()
-            ("a", po::value<int>(&variable_a)->default_value(0), "Variable A.")
-            ("b", po::value<int>(&variable_b)->default_value(0), "Variable B.");
+            ("program", po::value<std::string>(&program))
+            ("arguments", po::value<std::vector<std::string>>(&args)->multitoken());
 
     po::positional_options_description p;
-    p.add("a", 1);
-    p.add("b", 1);
+    p.add("program", 1);
+    p.add("arguments", -1);   
+
 
     po::options_description all("All options");
     all.add(visible).add(hidden);
 
-    po::variables_map vm;
-    po::store(po::command_line_parser(argc, argv).options(all).positional(p).run(), vm);
-    po::notify(vm);
+    std::string input = "merrno -h a b c";
 
+    po::variables_map vm;
+    po::store(po::command_line_parser(tokenize(input))
+                .options(all).positional(p).run(), vm);
+    po::notify(vm);
+    std::cout << program << std::endl;
+    for (auto& arg : args){
+        std::cout << arg << std::endl;
+    }
     if (vm.count("help")) {
-        std::cout << "Usage:\n  add [a] [b]\n" << visible << std::endl;
+        std::cout << "Help...\n" << visible << std::endl;
         return EXIT_SUCCESS;
     }
-
-    int result = operations::add(variable_a, variable_b);
-    std::cout << result << std::endl;
+    
     return EXIT_SUCCESS;
 }
+
+
+
