@@ -1,39 +1,39 @@
 #include <iostream>
 #include <boost/program_options.hpp>
-
 #include "operations/operations.hpp"
+#include <vector>
+#include <string>
 
+
+std::string right_path(const std::vector<std::string>& paths, const std::string& name){
+    for (const auto& i: paths){
+        if (access ((i + name).c_str(), F_OK) == 0){
+            return i + name;
+        }
+    }
+    return "";
+}
 int main(int argc, char **argv) {
     int variable_a, variable_b;
-
-    namespace po = boost::program_options;
-
-    po::options_description visible("Supported options");
-    visible.add_options()
-            ("help,h", "Print this help message.");
-
-    po::options_description hidden("Hidden options");
-    hidden.add_options()
-            ("a", po::value<int>(&variable_a)->default_value(0), "Variable A.")
-            ("b", po::value<int>(&variable_b)->default_value(0), "Variable B.");
-
-    po::positional_options_description p;
-    p.add("a", 1);
-    p.add("b", 1);
-
-    po::options_description all("All options");
-    all.add(visible).add(hidden);
-
-    po::variables_map vm;
-    po::store(po::command_line_parser(argc, argv).options(all).positional(p).run(), vm);
-    po::notify(vm);
-
-    if (vm.count("help")) {
-        std::cout << "Usage:\n  add [a] [b]\n" << visible << std::endl;
-        return EXIT_SUCCESS;
+    std::vector<std::string> paths;
+    paths.emplace_back("");
+    paths.emplace_back("./bin/ls/");
+    std::string a = "mycat";
+    std::string res = right_path(paths, a);
+    if(!res.empty()){
+        std::cout << res << '\n';
     }
-
-    int result = operations::add(variable_a, variable_b);
-    std::cout << result << std::endl;
+    else{
+        std::cerr << "Wrong path\n";
+    }
+    res = right_path(paths, "shit");
+    std::cin >> a;
+    if(!res.empty()){
+        std::cout << res << '\n';
+    }
+    else{
+        std::cerr << "Wrong path\n";
+    }
+    std::cout << res;
     return EXIT_SUCCESS;
 }
