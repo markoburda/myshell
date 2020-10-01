@@ -7,33 +7,8 @@
 #include <sys/wait.h>
 #include <a.out.h>
 #include <fstream>
-
-#define CMD_SIZE 256
-
-int mfork(char* prog, char** argv){
-    pid_t parent = getpid();
-    pid_t pid = fork();
-    printf("PID: %d", parent);
-    execv(prog, argv);
-
-//    if (pid == -1)
-//    {
-//        std::cerr << "Failed to fork\n" << std::endl;
-////        exit(EXIT_FAILURE);
-//        return -1;
-//    }
-//    else
-//    {
-////        std::cout << "Parent: " << parent << ", child: " << pid << std::endl;
-//        printf("Parent PID:%d", parent);
-//        execv(prog, argv);
-//        int status;
-//        waitpid(pid, &status, 0);
-//        std::cout << "child exited with code " << status << std::endl;
-//        return 0;
-//    }
-//    return 1;
-}
+#include "helper_funcs.hpp"
+extern char **environ;
 
 std::vector<char *> str_to_argv(std::string str){
     std::vector<char *> args;
@@ -77,7 +52,7 @@ int myscript(const std::string& filename){
 //            waitpid(pid, &status, 0);
         }
     }
-    return 111;
+    return 0;
 }
 
 int mcd(const char* path){
@@ -91,21 +66,61 @@ int mpwd(){
     return 0;
 }
 
+//One version of loop
+//    while(true) {
+////        mpwd();
+//        printf("main PID: %d\n", getpid());
+//        for(int i = 0; i < argc; i++){
+//            printf("arg: %s\n", argv[i]);
+//        }
+//        if (strcmp(argv[0], "echo") == 0) {
+//            printf("echo detected, exiting\n");
+//            return EXIT_SUCCESS;
+//        }
+//        else{
+//            myscript("test.msh");
+//        }
+//        printf("Back to main process");
+//        return 0;
+//    }
+
 int main(int argc, char **argv) {
-    while(true) {
-//        mpwd();
-        printf("main PID: %d\n", getpid());
-        for(int i = 0; i < argc; i++){
-            printf("arg: %s\n", argv[i]);
+    if (argc > 1) {
+        std::vector<std::string> args;
+    for (size_t i = 1; i < argc; ++i) {
+        args.emplace_back(argv[i]);
+    }
+    //TODO
+    exit(EXIT_SUCCESS);
+    }
+
+    typedef int (*pfunc)(std::vector<std::string>, bool);
+    std::map<std::string, pfunc> commands = {
+        {"merrno", operations::merrno},
+        {"mecho", operations::mecho},
+        {"mexport", operations::mexport},
+        {"mexit", operations::mexit},
+        {"mpwd", operations::mpwd},
+        {"mcd", operations::mcd}
+    };
+    int err = 0;
+    std::string input;
+    while (true) {
+        std::cout << get_current_dir() << "$ ";
+        getline(std::cin,    input);
+        std::string program;
+        std::vector<std::string> args;
+        bool help;
+        parse_args(input, program, args, help);
+        if (commands.find(program) != commands.end()) {
+            if (program.compare("merrno")==0) {
+                std::cout << err << std::endl;
+            } else {
+            err = (*commands[program])(args, help);
+            }
+        } else {
+            std::cout << "Unknown command\n";
+            continue;
         }
-        if (strcmp(argv[0], "echo") == 0) {
-            printf("echo detected, exiting\n");
-            return EXIT_SUCCESS;
-        }
-        else{
-            myscript("test.msh");
-        }
-        printf("Back to main process");
-        return 0;
     }
 }

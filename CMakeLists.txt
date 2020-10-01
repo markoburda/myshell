@@ -15,11 +15,10 @@ include(cmake/config.cmake)
 include_directories(inc)
 add_library(operations SHARED src/operations.cpp inc/operations/operations.hpp)
 add_executable(myshell src/main.cpp)
-add_executable(mecho src/mecho.cpp)
 target_link_libraries(myshell operations)
 
 # Add external packages
-find_package(Boost 1.71.0 COMPONENTS program_options REQUIRED)
+find_package(Boost 1.65.0 COMPONENTS program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 target_link_libraries(myshell Boost::program_options)
 
@@ -33,5 +32,5 @@ if (ENABLE_SANITIZERS)
     find_package(Sanitizers)
 
     # CMake targets to which apply sanitizers
-#    add_sanitizers(operations add)
+    add_sanitizers(operations myshell)
 endif ()
