@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
             std::cout << program << std::endl;
             myscript(args, 0);
         } else if (ext.find("sh") != std::string::npos) {
-            myscript(args);
+            myscript(std::vector<std::string>{program});
         } else {
             pid_t pid = fork();
             if (pid == -1) {
