@@ -10,18 +10,17 @@
 #include "helper_funcs.hpp"
 extern char **environ;
 
-std::vector<char *> str_to_argv(std::string str){
-    std::vector<char *> args;
-    std::istringstream iss(str);
-    std::string token;
-
-    while(iss >> token) {
-        char *arg = new char[token.size() + 1];
-        copy(token.begin(), token.end(), arg);
-        arg[token.size()] = '\0';
-        args.push_back(arg);
-    }
-    args.push_back(nullptr);
+// std::vector<char *> str_to_argv(std::string str){
+//     std::vector<char *> args;
+//     std::istringstream iss(str);
+//     std::string token;
+//     while(iss >> token) {
+//         char *arg = new char[token.size() + 1];
+//         copy(token.begin(), token.end(), arg);
+//         arg[token.size()] = '\0';
+//         args.push_back(arg);
+//     }
+//     args.push_back(nullptr);
 
 //    for(auto &kv: args){
 //        std::cout << "Arg: " << kv << std::endl;
@@ -30,72 +29,100 @@ std::vector<char *> str_to_argv(std::string str){
 //    for(size_t i = 0; i < args.size(); i++)
 //        delete[] args[i];
 //    execv("myshell", &args[0]);
-    return args;
-}
+   // return args;
+//}
 
-int myscript(const std::string& filename){
-    std::ifstream input(filename);
-    for( std::string line; getline( input, line ); )
-    {
-        if(line[0] != '#'){
-            printf("Line: %s\n", line.c_str());
-            pid_t parent = getpid();
-            pid_t pid = fork();
-            if (pid == -1)
-                {
-                    std::cerr << "Failed to fork\n" << std::endl;
-                    return -1;
+
+int myscript(const std::vector<std::string>& files, bool forking=1){
+    for (auto& filename : files) {
+        std::ifstream script_file(filename);
+        std::string line;
+        while (std::getline(script_file, line)) {
+            std::vector<std::string> words;
+            std::istringstream stream(line);
+            std::string word;
+            while (stream >> word) {
+                if (word[0] == '#') {
+                    break;
+                } else if (word.find("=") != std::string::npos) {
+                    operations::mexport(std::vector<std::string>{word}, 0);
+                    continue;
+                } else {
+                    words.push_back(word);
                 }
-            printf("Child PID: %d", pid);
-            execv("myshell", &str_to_argv(line)[0]);
-            int status;
-//            waitpid(pid, &status, 0);
+            }
+            if (forking){
+                pid_t pid = fork();
+                if (pid == -1) {
+                    std::cerr << "Failed to fork()" << std::endl;
+                    return EXIT_FAILURE;
+                } else if (pid > 0) {
+                    int status;
+                    waitpid(pid, &status, 0);
+                } else {
+                    std::vector<const char*> arg_for_c;
+                    for(const auto& s: words)arg_for_c.push_back(s.c_str());
+                    arg_for_c.push_back(nullptr);
+                    execvp(words[0].c_str(), const_cast<char* const*>(arg_for_c.data()));
+                    std::cerr << "Failed to execve()" << std::endl;
+                    return EXIT_FAILURE;
+                }
+            } else {
+                std::vector<const char*> arg_for_c;
+                for(const auto& s: words)arg_for_c.push_back(s.c_str());
+                arg_for_c.push_back(nullptr);
+                execve(words[0].c_str(), const_cast<char* const*>(arg_for_c.data()), environ);
+                std::cerr << "Failed to execve()" << std::endl;
+                return EXIT_FAILURE;
+            }
         }
     }
     return 0;
+
+        
 }
 
-int mcd(const char* path){
-    if (chdir(path) != 0)
-        std::cerr << "cd: " << path << ": No such file or directory" << std::endl;
-    return 0;
-}
 
-int mpwd(){
-    std::cout << getcwd(NULL, 0) << "$ ";
-    return 0;
-}
 
-//One version of loop
-//    while(true) {
-////        mpwd();
-//        printf("main PID: %d\n", getpid());
-//        for(int i = 0; i < argc; i++){
-//            printf("arg: %s\n", argv[i]);
-//        }
-//        if (strcmp(argv[0], "echo") == 0) {
-//            printf("echo detected, exiting\n");
-//            return EXIT_SUCCESS;
-//        }
-//        else{
-//            myscript("test.msh");
-//        }
-//        printf("Back to main process");
-//        return 0;
-//    }
+// int myscript(const std::string& filename){
+//     std::ifstream input(filename);
+//     for( std::string line; getline( input, line ); )
+//     {
+//         if(line[0] != '#'){
+//             printf("Line: %s\n", line.c_str());
+//             pid_t parent = getpid();
+//             pid_t pid = fork();
+//             if (pid == -1)
+//                 {
+//                     std::cerr << "Failed to fork\n" << std::endl;
+//                     return -1;
+//                 }
+//             printf("Child PID: %d", pid);
+//             execv("myshell", &str_to_argv(line)[0]);
+//             int status;
+// //            waitpid(pid, &status, 0);
+//         }
+//     }
+//     return 0;
+// }
+
+
+
+
 
 int main(int argc, char **argv) {
     if (argc > 1) {
         std::vector<std::string> args;
-    for (size_t i = 1; i < argc; ++i) {
-        args.emplace_back(argv[i]);
-    }
-    //TODO
-    exit(EXIT_SUCCESS);
+
+        for (size_t i = 1; i < argc; ++i) {
+            args.push_back(argv[i]);
+        }
+        myscript(args);
+        exit(EXIT_SUCCESS);
     }
 
     typedef int (*pfunc)(std::vector<std::string>, bool);
-    std::map<std::string, pfunc> commands = {
+    std::map<std::string, pfunc> internal_commands = {
         {"merrno", operations::merrno},
         {"mecho", operations::mecho},
         {"mexport", operations::mexport},
@@ -112,15 +139,42 @@ int main(int argc, char **argv) {
         std::vector<std::string> args;
         bool help;
         parse_args(input, program, args, help);
-        if (commands.find(program) != commands.end()) {
+        int position = program.find_last_of(".");
+        std::string ext = program.substr(position+1);
+        if (internal_commands.find(program) != internal_commands.end()) {
             if (program.compare("merrno")==0) {
-                std::cout << err << std::endl;
+                if (help){
+                    std::cout << "Print error code of last command\nUsage: merrno [-h, --help]\n -h, --help\t Print this help message" << std::endl;        
+                } else {
+                    std::cout << err << std::endl;
+                }
             } else {
-            err = (*commands[program])(args, help);
+            err = (*internal_commands[program])(args, help);
             }
+        } else if (program.compare(".")==0) {
+            std::cout << program << std::endl;
+            myscript(args, 0);
+        } else if (ext.find("sh") != std::string::npos) {
+            myscript(args);
         } else {
-            std::cout << "Unknown command\n";
-            continue;
-        }
+            pid_t pid = fork();
+            if (pid == -1) {
+                std::cerr << "Failed to fork()" << std::endl;
+                return EXIT_FAILURE;
+            } else if (pid > 0) {
+                int status;
+                waitpid(pid, &status, 0);
+            } else {
+                std::vector<const char*> arg_for_c;
+                arg_for_c.push_back(program.c_str());
+                for(const auto& s: args)arg_for_c.push_back(s.c_str());
+                arg_for_c.push_back(nullptr);
+                execve(program.c_str(), const_cast<char* const*>(arg_for_c.data()), environ);
+                std::cerr << "Failed to execve()" << std::endl;
+                return EXIT_FAILURE;
+            }        
+            
+        }  
     }
+    return 0;
 }
