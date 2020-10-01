@@ -1,61 +1,54 @@
 #include <iostream>
-#include <boost/program_options.hpp>
-#include <boost/tokenizer.hpp>
 #include <string>
 #include "operations/operations.hpp"
+#include <unistd.h>
+#include "helper_funcs.hpp"
+extern char **environ;
 
 
-std::vector<std::string> tokenize(const std::string& input)
-{
-    std::vector<std::string> result;
-    typedef boost::char_separator<char> separator;
-    std::string delim = " ";
-    boost::tokenizer<separator> tokens(input, separator(delim.c_str()));
-    std::copy(tokens.begin(), tokens.end(), std::back_inserter(result));
-    return result;
-}
 
 
 
 int main(int argc, char **argv) {
-
-    std::string program;
-    std::vector<std::string> args;
-
-    namespace po = boost::program_options;
-    po::options_description visible("Options");
-    visible.add_options()
-       ("help,h", "Print this help message.");
-
-    po::options_description hidden("Hidden options");
-    hidden.add_options()
-            ("program", po::value<std::string>(&program))
-            ("arguments", po::value<std::vector<std::string>>(&args)->multitoken());
-
-    po::positional_options_description p;
-    p.add("program", 1);
-    p.add("arguments", -1);   
-
-
-    po::options_description all("All options");
-    all.add(visible).add(hidden);
-
-    std::string input = "merrno -h a b c";
-
-    po::variables_map vm;
-    po::store(po::command_line_parser(tokenize(input))
-                .options(all).positional(p).run(), vm);
-    po::notify(vm);
-    std::cout << program << std::endl;
-    for (auto& arg : args){
-        std::cout << arg << std::endl;
+    if (argc > 1) {
+        std::vector<std::string> args;
+    for (size_t i = 1; i < argc; ++i) {
+        args.push_back(argv[i]);
     }
-    if (vm.count("help")) {
-        std::cout << "Help...\n" << visible << std::endl;
-        return EXIT_SUCCESS;
+    //TODO
+    exit(EXIT_SUCCESS);
     }
-    
-    return EXIT_SUCCESS;
+
+    typedef int (*pfunc)(std::vector<std::string>, bool);
+    std::map<std::string, pfunc> commands = {
+        {"merrno", operations::merrno},
+        {"mecho", operations::mecho},
+        {"mexport", operations::mexport},
+        {"mexit", operations::mexit},
+        {"mpwd", operations::mpwd},
+        {"mcd", operations::mcd}
+    };
+    int err = 0;
+    std::string input;
+    while (true) {
+        std::cout << get_current_dir() << "$ ";
+        getline(std::cin, input);
+        std::string program;
+        std::vector<std::string> args;
+        bool help;
+        parse_args(input, program, args, help);
+        if (commands.find(program) != commands.end()) {
+            if (program.compare("merrno")==0) {
+                std::cout << err << std::endl;
+            } else {
+            err = (*commands[program])(args, help);
+            }
+        } else {
+            std::cout << "Unknown command\n";
+            continue;
+        }   
+        
+    }
 }
 
 
