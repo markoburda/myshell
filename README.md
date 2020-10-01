@@ -1,5 +1,7 @@
-MYSHELL
+###MYSHELL
 
-Bohdan Yatskiv
-Marko Burda
-Arsen Ilchyniak
+Bohdan Yatskiv;
+
+Marko Burda;
+
+Arsen Ilchyniak;
