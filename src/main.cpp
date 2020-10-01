@@ -10,6 +10,28 @@
 #include "helper_funcs.hpp"
 extern char **environ;
 
+// std::vector<char *> str_to_argv(std::string str){
+//     std::vector<char *> args;
+//     std::istringstream iss(str);
+//     std::string token;
+//     while(iss >> token) {
+//         char *arg = new char[token.size() + 1];
+//         copy(token.begin(), token.end(), arg);
+//         arg[token.size()] = '\0';
+//         args.push_back(arg);
+//     }
+//     args.push_back(nullptr);
+
+//    for(auto &kv: args){
+//        std::cout << "Arg: " << kv << std::endl;
+//    }
+
+//    for(size_t i = 0; i < args.size(); i++)
+//        delete[] args[i];
+//    execv("myshell", &args[0]);
+   // return args;
+//}
+
 
 int myscript(const std::vector<std::string>& files, bool forking=1){
     for (auto& filename : files) {
@@ -60,9 +82,38 @@ int myscript(const std::vector<std::string>& files, bool forking=1){
         
 }
 
+
+
+// int myscript(const std::string& filename){
+//     std::ifstream input(filename);
+//     for( std::string line; getline( input, line ); )
+//     {
+//         if(line[0] != '#'){
+//             printf("Line: %s\n", line.c_str());
+//             pid_t parent = getpid();
+//             pid_t pid = fork();
+//             if (pid == -1)
+//                 {
+//                     std::cerr << "Failed to fork\n" << std::endl;
+//                     return -1;
+//                 }
+//             printf("Child PID: %d", pid);
+//             execv("myshell", &str_to_argv(line)[0]);
+//             int status;
+// //            waitpid(pid, &status, 0);
+//         }
+//     }
+//     return 0;
+// }
+
+
+
+
+
 int main(int argc, char **argv) {
     if (argc > 1) {
         std::vector<std::string> args;
+
         for (size_t i = 1; i < argc; ++i) {
             args.push_back(argv[i]);
         }
@@ -83,7 +134,7 @@ int main(int argc, char **argv) {
     std::string input;
     while (true) {
         std::cout << get_current_dir() << "$ ";
-        getline(std::cin, input);
+        getline(std::cin,    input);
         std::string program;
         std::vector<std::string> args;
         bool help;
