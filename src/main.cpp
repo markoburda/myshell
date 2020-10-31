@@ -115,9 +115,7 @@ int redirect(const std::string& from, const std::string& to, const std::string& 
     return EXIT_SUCCESS;
 }
 
-int process_conv(std::string& program, std::vector<std::string>& args, bool back){
-    std::vector<std::string> new_args = std::vector<std::string>{program};
-    args.insert(args.begin(), new_args.begin(), new_args.end());
+void process_conv(std::string& program, std::vector<std::string>& args, bool back){
     for (size_t i = 0; i < args.size() - 1; i++) {
         if (args[i] == "|"){
             conveyor(args, back);
@@ -139,10 +137,39 @@ int process_conv(std::string& program, std::vector<std::string>& args, bool back
      }
  }
 
+ int assign_cmd(std::string& program, std::vector<std::string>& args) {
+    std::string str_arg= "";
+    str_arg += program;
+    for (size_t i = 0; i < args.size(); i++){
+        str_arg += " ";
+        str_arg = str_arg + args[i];
+
+    }
+    for (size_t i = 0; i < str_arg.size(); i++) {
+        if (str_arg[i] == '$'){
+            str_arg.erase(str_arg.begin(), str_arg.begin()+i+2);
+            
+            str_arg.erase(std::prev(str_arg.end())); 
+        }
+        
+    }
+    std::vector<std::string> args_as = tokenize(str_arg);
+
+    args_as.push_back(">");
+    args_as.push_back("./file.txt");
+    process_conv(args_as[0], args_as, false);
+    std::ifstream ifs("./file.txt");
+    std::string content( (std::istreambuf_iterator<char>(ifs) ),
+               (std::istreambuf_iterator<char>()));
+    std::remove("./file.txt");
+    std::string var_name = tokenize(program, "=")[0];
+    var_name += "=" + content;
+    int err = operations::mexport(std::vector<std::string>{var_name}, false);
+    return err;
+ }
+
  
-
-
-
+ 
 int main(int argc, char **argv) {
     if (argc > 1) {
         std::vector<std::string> args;
@@ -190,7 +217,7 @@ int main(int argc, char **argv) {
         } else if (program.compare(".")==0) {
             err = operations::myscript(args, 0);
         } else if (program.find("=") != std::string::npos) {
-            err = operations::mexport(std::vector<std::string>{program}, false);
+            err = assign_cmd(program, args);
         } else if (ext.find("sh") != std::string::npos) {
             err = operations::myscript(std::vector<std::string>{program});              
         } else {
@@ -202,6 +229,8 @@ int main(int argc, char **argv) {
             if ((args.size() > 0) &&((std::find(args.begin(), args.end(), ">") != args.end()) || (std::find(args.begin(), args.end(), "<") != args.end()) || 
                (std::find(args.begin(), args.end(), "|") != args.end()) || (std::find(args.begin(), args.end(), "2>") != args.end()) ||
                (std::find(args.begin(), args.end(), "2>&1") != args.end()) || (std::find(args.begin(), args.end(), "&>") != args.end()))) {
+                std::vector<std::string> new_args = std::vector<std::string>{program};
+                args.insert(args.begin(), new_args.begin(), new_args.end());
                 process_conv(program, args, back);
             } else {
                 std::vector<std::string> new_args = std::vector<std::string>{program};
