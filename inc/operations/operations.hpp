@@ -10,6 +10,8 @@ namespace operations {
     int mexit(std::vector<std::string>,bool);
     int mpwd(std::vector<std::string>,bool);
     int mcd(std::vector<std::string>,bool);
+    int myscript(const std::vector<std::string>&, bool=1);
+    int mycat(std::vector<std::string>, int);
 
 }
 

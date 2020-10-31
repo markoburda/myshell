@@ -6,7 +6,6 @@ std::vector<std::string> tokenize(const std::string& input, std::string delim=" 
 {
     std::vector<std::string> result;
     typedef boost::char_separator<char> separator;
-    //std::string delim = " ";
     boost::tokenizer<separator> tokens(input, separator(delim.c_str()));
     std::copy(tokens.begin(), tokens.end(), std::back_inserter(result));
     return result;
@@ -38,15 +37,50 @@ void parse_args(std::string input, std::string& program, std::vector<std::string
     po::options_description all("All options");
     all.add(visible).add(hidden);
 
-    //std::string input = "mexport a=abc";
-
     po::variables_map vm;
     po::store(po::command_line_parser(tokenize(input))
                 .options(all).positional(p).run(), vm);
     po::notify(vm);
 
-    //bool help = 0;
     if (vm.count("help")) {
         help = 1;
     }
 }
+
+std::vector<std::string> process(std::vector<std::string>& args, int& err){
+    std::vector<std::string> processed;
+    for (auto& arg : args) {
+        if (arg[0] == '$') {
+                arg.erase(arg.begin());
+                if (getenv(arg.c_str()) != NULL) {
+                    processed.push_back(getenv(arg.c_str()));
+                } else {
+                    if (arg.size() > 2){
+                        arg.erase(arg.begin());
+                        arg.erase(std::prev(arg.end()));
+                        if (getenv(arg.c_str()) != NULL) {
+                            processed.push_back(getenv(arg.c_str()));
+                        }
+                        else {
+                            std::cerr << "There is no such variable: "<< arg << std::endl;
+                            err = EXIT_FAILURE;
+                        }
+                    
+                    } else {
+                        std::cerr << "There is no such variable: "<< arg << std::endl;
+                        err = EXIT_FAILURE;
+                    }
+                }
+        } else {
+            if ((arg[0] == '"') && (arg[args.size()] == '"')) {
+                arg.erase(arg.begin());
+                arg.erase(std::prev(arg.end())); 
+
+            }
+            processed.push_back(arg);
+        }
+    }
+    return processed;
+}
+
+
