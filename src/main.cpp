@@ -10,7 +10,11 @@
 #include <a.out.h>
 #include <fstream>
 #include "helper_funcs.hpp"
+#include <sys/socket.h>
+#include <arpa/inet.h>
 extern char **environ;
+
+namespace po = boost::program_options;
 
 int fexec(const std::string& program, const std::vector<std::string>& args, int from = -1, int to = -1, int from_d = -1, int to_d = -1, bool background = false){
     pid_t pid = fork();
@@ -46,7 +50,7 @@ int fexec(const std::string& program, const std::vector<std::string>& args, int 
         for(const auto& s: args)arg_for_c.push_back(s.c_str());
         arg_for_c.push_back(nullptr);
         execvp(program.c_str(), const_cast<char* const*>(arg_for_c.data()));
-        std::cerr << "Failed to exxec()" << std::endl;
+        std::cerr << "Failed to exec()" << std::endl;
         exit(1);
         
     } 
@@ -168,10 +172,8 @@ void process_conv(std::string& program, std::vector<std::string>& args, bool bac
     return err;
  }
 
- 
- 
-int main(int argc, char **argv) {
-    if (argc > 1) {
+int process_execute(int argc, char **argv, int sock = 0) {
+    if ((sock == 0) && (argc > 1)) {
         std::vector<std::string> args;
         for (size_t i = 1; i < argc; ++i) {
             args.push_back(argv[i]);
@@ -179,6 +181,12 @@ int main(int argc, char **argv) {
         operations::myscript(args);
         exit(EXIT_SUCCESS);
     }
+    auto path_ptr = getenv("PATH");
+    std::string path;
+    if (path_ptr != nullptr)
+        path = path_ptr;
+    path += ":.";
+    setenv("PATH", path.c_str(), 1);
     typedef int (*pfunc)(std::vector<std::string>, bool);
     std::map<std::string, pfunc> internal_commands = {
         {"mecho", operations::mecho},
@@ -190,8 +198,16 @@ int main(int argc, char **argv) {
     int err = 0;
     std::string input;
     while (true) {
-        std::cout << get_current_dir() << "$ ";
-        getline(std::cin, input);
+        if (sock == 0) {
+            std::cout << get_current_dir() << "$ ";
+            getline(std::cin, input);
+        } else {
+            std::cout << get_current_dir() << "$ " << std::flush;
+            char buf[1024];
+            int res = recv(sock, buf, sizeof(buf), 0);
+            buf[res] = '\0';
+            input = buf;
+        }
         std::string program;
         std::vector<std::string> args;
         bool help;
@@ -232,6 +248,7 @@ int main(int argc, char **argv) {
                 std::vector<std::string> new_args = std::vector<std::string>{program};
                 args.insert(args.begin(), new_args.begin(), new_args.end());
                 process_conv(program, args, back);
+
             } else {
                 std::vector<std::string> new_args = std::vector<std::string>{program};
                 args.insert(args.begin(), new_args.begin(), new_args.end());
@@ -242,5 +259,57 @@ int main(int argc, char **argv) {
     }
     return 0; 
 }
-    
+
+int main(int argc, char **argv) {
+    po::options_description opt("Options");
+    int port;
+    opt.add_options()
+            ("server", "Run as server")
+            ("port",  po::value<int>(&port), "Port number");
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, opt), vm);
+    po::notify(vm);
+    if (vm.count("server")) {
+        struct sockaddr_in server;
+        int sock = socket(AF_INET, SOCK_STREAM, 0);
+        if (sock < 0) {
+            std::cerr << "Can not open socket" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        memset(&server, 0, sizeof(server));
+
+        server.sin_family = AF_INET;
+        server.sin_addr.s_addr = htonl(INADDR_ANY);
+        server.sin_port = htons(port);
+        
+        int binded = bind(sock, (struct sockaddr *) &server, sizeof(server));
+        if (binded < 0) {
+            std::cerr << "Can not bind" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        listen(sock, 1);
+        for (;;) {
+            int ac_sock = accept(sock, NULL, NULL);
+            if (ac_sock < 0){
+                std::cerr << "Failed to accept connection" << std::endl;
+                exit(1);
+            }
+            pid_t pid = fork();
+            if (pid == -1) {
+                std::cerr << "Failed to fork()" << std::endl;
+                exit(EXIT_FAILURE);
+            } else if (pid > 0) {
+                close(ac_sock);
+            } else {
+                dup2(ac_sock, STDOUT_FILENO);  
+                dup2(ac_sock, STDERR_FILENO); 
+                process_execute(argc, argv, ac_sock);
+                close(ac_sock);
+            }
+        }
+    } else {
+        process_execute(argc, argv);
+    }
+    return 0;
+}
 
