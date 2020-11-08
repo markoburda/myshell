@@ -181,12 +181,6 @@ int process_execute(int argc, char **argv, int sock = 0) {
         operations::myscript(args);
         exit(EXIT_SUCCESS);
     }
-    auto path_ptr = getenv("PATH");
-    std::string path;
-    if (path_ptr != nullptr)
-        path = path_ptr;
-    path += ":.";
-    setenv("PATH", path.c_str(), 1);
     typedef int (*pfunc)(std::vector<std::string>, bool);
     std::map<std::string, pfunc> internal_commands = {
         {"mecho", operations::mecho},
@@ -288,7 +282,7 @@ int main(int argc, char **argv) {
             exit(EXIT_FAILURE);
         }
         listen(sock, 1);
-        for (;;) {
+        while (true) {
             int ac_sock = accept(sock, NULL, NULL);
             if (ac_sock < 0){
                 std::cerr << "Failed to accept connection" << std::endl;
